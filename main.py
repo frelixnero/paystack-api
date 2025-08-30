@@ -77,7 +77,7 @@ async def initialize_payment(payment: PaymentRequest):
     }
     print("D A T A S E N T to PayS T A C K:", data)
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
             "https://api.paystack.co/transaction/initialize",
             json=data,
