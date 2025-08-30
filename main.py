@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 import requests
+import httpx
 
 app = FastAPI()
 
@@ -40,27 +41,59 @@ PROCESSED_PAYMENTS = set()
 async def root():
     return {"message": "Hello World"}
 
+# @app.post("/paystack/initialize/")
+# async def initialize_payment(payment: PaymentRequest):
+#     print("Payment Initialization Endpoint hit")
+#     headers = {
+#         "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+#         "Content-Type": "application/json",
+#     }
+#     data = {
+#         "email": payment.email,
+#         "amount": int(payment.amount * 100),  # Convert amount to kob
+#         "callback_url": "http://10.154.42.153:8080/paystack/callback", # change to your backend call back url
+#     }
+#     print("D A T A S E N T to PayS T A C K:", data)
+#     response = requests.post("https://api.paystack.co/transaction/initialize", json=data, headers=headers)
+#     print("Paystack API response:", response.json())
+
+#     if response.status_code == 200:
+#         return response.json()
+#     else:
+#         response_json = response.json()
+#         raise HTTPException(status_code=response.status_code, detail=response_json.get("message", "Payment initialization failed"))
 @app.post("/paystack/initialize/")
 async def initialize_payment(payment: PaymentRequest):
     print("Payment Initialization Endpoint hit")
+
     headers = {
         "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
         "Content-Type": "application/json",
     }
     data = {
         "email": payment.email,
-        "amount": int(payment.amount * 100),  # Convert amount to kob
-        "callback_url": "http://10.154.42.153:8080/paystack/callback", # change to your backend call back url
+        "amount": int(payment.amount * 100),  # Convert to kobo
+        "callback_url": "https://paystack-api-vblu.onrender.com/paystack/callback",
     }
     print("D A T A S E N T to PayS T A C K:", data)
-    response = requests.post("https://api.paystack.co/transaction/initialize", json=data, headers=headers)
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(
+            "https://api.paystack.co/transaction/initialize",
+            json=data,
+            headers=headers,
+        )
+
     print("Paystack API response:", response.json())
 
     if response.status_code == 200:
         return response.json()
     else:
         response_json = response.json()
-        raise HTTPException(status_code=response.status_code, detail=response_json.get("message", "Payment initialization failed"))
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=response_json.get("message", "Payment initialization failed")
+        )
 
 @app.get("/paystack/verify/{reference}")
 async def verify_payment(reference: str):
